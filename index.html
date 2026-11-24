@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a3b2e">
+<title>Masuk · Presensi MA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/css/app.css?v=3">
+</head>
+<body class="mobile">
+<div class="phone">
+
+  <div class="login-hero">
+    <div class="logo-ring"><span>MA</span></div>
+    <h1>Presensi Pegawai</h1>
+    <p>MA Nurul Jadid</p>
+  </div>
+
+  <div class="login-sheet">
+    <h2>Selamat datang</h2>
+    <p class="muted small" style="margin-bottom:6px">Masuk dengan NIP dan kata sandi Anda.</p>
+
+    <div id="pesan" role="alert" hidden></div>
+
+    <form id="form" autocomplete="off">
+      <label for="nip">NIP</label>
+      <input class="input" id="nip" name="nip" inputmode="numeric" placeholder="Masukkan NIP" required>
+      <label for="sandi">Kata sandi</label>
+      <div class="pw">
+        <input class="input" id="sandi" name="sandi" type="password" placeholder="Masukkan kata sandi" required>
+        <button type="button" class="pw-toggle" id="lihat">Lihat</button>
+      </div>
+      <button class="btn btn-primary btn-xl btn-block" id="btn" style="margin-top:20px">
+        <svg class="i" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5H18A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5h-3.5"/><path d="M9.5 8l-4 4 4 4"/><path d="M5.5 12h10"/></svg>
+        <span id="btnTeks">Masuk</span>
+      </button>
+    </form>
+
+    <div class="note-box">
+      <svg class="i" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3.5" width="10" height="17" rx="2.6"/><path d="M11 17.5h2"/></svg>
+      <div><b>Akun terikat pada satu perangkat.</b><br>Pergantian perangkat perlu persetujuan Admin.</div>
+    </div>
+    <p class="center" style="margin-top:16px"><a class="small-link" href="admin/login.php">Masuk Web Panel →</a></p>
+  </div>
+
+</div>
+<noscript><p style="text-align:center;padding:16px">Aktifkan JavaScript untuk masuk.</p></noscript>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); };
+
+  /* Identitas perangkat: UUID acak yang disimpan di perangkat ini */
+  var K = 'presensi_device', dev = null;
+  try { dev = localStorage.getItem(K); } catch (e) {}
+  if (!dev || !/^[a-f0-9]{32}$/.test(dev)) {
+    var a = new Uint8Array(16); (window.crypto || window.msCrypto).getRandomValues(a);
+    dev = Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    try { localStorage.setItem(K, dev); } catch (e) {}
+  }
+
+  function tampil(tipe, teks) {
+    var p = $('pesan'); p.className = 'alert alert-' + (tipe === 'warn' ? 'warn' : 'err'); p.textContent = teks; p.hidden = false;
+  }
+
+  $('lihat').addEventListener('click', function () { var i = $('sandi'); i.type = i.type === 'password' ? 'text' : 'password'; });
+
+  /* Jika sesi masih aktif, langsung ke halaman presensi */
+  fetch('api/login.php', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.sudah_login) location.replace(d.redirect); }).catch(function () {});
+
+  $('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('pesan').hidden = true; $('btn').disabled = true; $('btnTeks').textContent = 'Memeriksa…';
+    fetch('api/login.php', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nip: $('nip').value.trim(), sandi: $('sandi').value, device: dev })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.ok) { location.href = d.redirect; return; }
+      tampil(d.tipe, d.pesan || 'Gagal masuk.');
+    }).catch(function () {
+      tampil('err', 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
+    }).then(function () { $('btn').disabled = false; $('btnTeks').textContent = 'Masuk'; });
+  });
+})();
+</script>
+</body>
+</html>
